@@ -1,0 +1,195 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    // Collection: tasks
+    // Document ID: auto-generated
+    // Fields:
+    //   - userId: string (required, immutable)
+    //   - title: string (required, size < 500)
+    //   - completed: boolean (required)
+    //   - createdAt: number (required, immutable)
+    //
+    // Collection: chatMemory
+    // Document ID: {userId}
+    // Fields:
+    //   - userId: string (required, immutable)
+    //   - messages: string (required, size < 100000)
+    //   - updatedAt: number (required)
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.userId;
+    }
+
+    function uidUnchanged() {
+      return !('userId' in request.resource.data) || request.resource.data.userId == request.auth.uid;
+    }
+
+    function uidNotModified() {
+      return !('userId' in request.resource.data) || request.resource.data.userId == resource.data.userId;
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+    function isValidTask(data) {
+      let hasValidFields = hasOnlyAllowedFields(['userId', 'title', 'completed', 'createdAt']) || 
+                           hasOnlyAllowedFields(['userId', 'title', 'completed', 'createdAt', 'order']) ||
+                           hasOnlyAllowedFields(['userId', 'title', 'completed', 'createdAt', 'category']) ||
+                           hasOnlyAllowedFields(['userId', 'title', 'completed', 'createdAt', 'order', 'category']);
+      
+      return hasValidFields &&
+             data.userId is string &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 500 &&
+             data.completed is bool &&
+             data.createdAt is number &&
+             (!('order' in data) || data.order is number) &&
+             (!('category' in data) || data.category in ['Craft', 'NPC', 'Exploração', 'Igreja', 'Masmorra', 'Geral']);
+    }
+
+    function isValidChatMemory(data) {
+      return hasOnlyAllowedFields(['userId', 'messages', 'updatedAt']) &&
+             data.userId is string &&
+             data.messages is string && data.messages.size() < 100000 &&
+             data.updatedAt is number;
+    }
+
+    function isValidChatSession(data) {
+      return hasOnlyAllowedFields(['userId', 'createdAt', 'updatedAt']) &&
+             data.userId is string &&
+             data.createdAt is number &&
+             data.updatedAt is number;
+    }
+
+    function isValidChatMessage(data) {
+      return (hasOnlyAllowedFields(['role', 'content', 'createdAt']) || hasOnlyAllowedFields(['role', 'content', 'images', 'createdAt'])) &&
+             data.role is string && (data.role == 'user' || data.role == 'model') &&
+             data.content is string && data.content.size() < 20000 &&
+             data.createdAt is number &&
+             (!('images' in data) || (data.images is list && data.images.size() <= 10));
+    }
+
+    function isValidMemory(data) {
+      return hasOnlyAllowedFields(['userId', 'title', 'content', 'createdAt']) &&
+             data.userId is string &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
+             data.content is string && data.content.size() > 0 && data.content.size() < 5000 &&
+             data.createdAt is number;
+    }
+
+    function isValidSystemLog(data) {
+      return hasOnlyAllowedFields(['type', 'userId', 'timestamp', 'rawText', 'recoveredTasks', 'recoveredMemories']) &&
+             data.type is string &&
+             data.userId is string &&
+             data.timestamp is number &&
+             data.rawText is string && data.rawText.size() < 100000 &&
+             data.recoveredTasks is number &&
+             data.recoveredMemories is number;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+    
+    match /userSettings/{userId} {
+      allow read: if isOwner(userId);
+      allow create, update: if isOwner(userId) && 
+                               request.resource.data.keys().hasAll(['currentGameDay', 'updatedAt']) &&
+                               request.resource.data.keys().hasOnly(['currentGameDay', 'updatedAt']) &&
+                               request.resource.data.currentGameDay is number &&
+                               request.resource.data.updatedAt is number;
+      allow delete: if false;
+    }
+    
+    match /systemLogs/{logId} {
+      allow create: if isAuthenticated() && 
+                       isValidSystemLog(request.resource.data) && 
+                       request.resource.data.userId == request.auth.uid;
+      // Logs are write-only for auditing
+      allow read: if false; 
+      allow update, delete: if false;
+    }
+
+    match /memories/{memoryId} {
+      allow read: if isDocOwner();
+      allow create: if isAuthenticated() && 
+                       isValidMemory(request.resource.data) && 
+                       request.resource.data.userId == request.auth.uid;
+      allow update: if isDocOwner() && 
+                       isValidMemory(request.resource.data) && 
+                       uidNotModified() &&
+                       request.resource.data.createdAt == resource.data.createdAt;
+      allow delete: if isDocOwner();
+    }
+
+    match /tasks/{taskId} {
+      allow read: if isDocOwner();
+      allow create: if isAuthenticated() && 
+                       isValidTask(request.resource.data) && 
+                       request.resource.data.userId == request.auth.uid;
+      allow update: if isDocOwner() && 
+                       isValidTask(request.resource.data) && 
+                       uidNotModified() &&
+                       request.resource.data.createdAt == resource.data.createdAt;
+      allow delete: if isDocOwner();
+    }
+
+    match /chatMemory/{memoryId} {
+      allow read: if isOwner(memoryId);
+      allow create: if isAuthenticated() && 
+                       memoryId == request.auth.uid &&
+                       isValidChatMemory(request.resource.data) && 
+                       request.resource.data.userId == request.auth.uid;
+      allow update: if isOwner(memoryId) && 
+                       isValidChatMemory(request.resource.data) && 
+                       uidNotModified();
+      allow delete: if isOwner(memoryId);
+    }
+    
+    match /chatSessions/{sessionId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && 
+                       isValidChatSession(request.resource.data) && 
+                       request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid &&
+                       isValidChatSession(request.resource.data) && 
+                       uidNotModified();
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      
+      match /messages/{messageId} {
+        allow read: if isAuthenticated() && get(/databases/$(database)/documents/chatSessions/$(sessionId)).data.userId == request.auth.uid;
+        allow create: if isAuthenticated() && 
+                         get(/databases/$(database)/documents/chatSessions/$(sessionId)).data.userId == request.auth.uid &&
+                         isValidChatMessage(request.resource.data);
+        allow update: if isAuthenticated() && get(/databases/$(database)/documents/chatSessions/$(sessionId)).data.userId == request.auth.uid &&
+                         isValidChatMessage(request.resource.data) &&
+                         request.resource.data.createdAt == resource.data.createdAt;
+        allow delete: if isAuthenticated() && get(/databases/$(database)/documents/chatSessions/$(sessionId)).data.userId == request.auth.uid;
+      }
+    }
+  }
+}

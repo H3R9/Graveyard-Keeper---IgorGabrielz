@@ -1,0 +1,62 @@
+{
+  "entities": {
+    "Task": {
+      "title": "Task",
+      "description": "A task in the user's to-do list.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The ID of the user who owns the task."
+        },
+        "title": {
+          "type": "string",
+          "description": "The description of the task."
+        },
+        "completed": {
+          "type": "boolean",
+          "description": "Whether the task is completed."
+        },
+        "createdAt": {
+          "type": "number",
+          "description": "Timestamp of creation."
+        }
+      },
+      "required": ["userId", "title", "completed", "createdAt"]
+    },
+    "ChatMemory": {
+      "title": "ChatMemory",
+      "description": "Saved chat history for the AI.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The ID of the user."
+        },
+        "messages": {
+          "type": "string",
+          "description": "JSON stringified array of messages to bypass Firestore nested array limits."
+        },
+        "updatedAt": {
+          "type": "number",
+          "description": "Timestamp of last update."
+        }
+      },
+      "required": ["userId", "messages", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/tasks/{taskId}": {
+      "schema": {
+        "$ref": "#/entities/Task"
+      },
+      "description": "Stores user tasks."
+    },
+    "/chatMemory/{memoryId}": {
+      "schema": {
+        "$ref": "#/entities/ChatMemory"
+      },
+      "description": "Stores user chat history."
+    }
+  }
+}
