@@ -4,26 +4,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // ===============================================================
-    // Assumed Data Model
-    // ===============================================================
-    // Collection: tasks
-    // Document ID: auto-generated
-    // Fields:
-    //   - userId: string (required, immutable)
-    //   - title: string (required, size < 500)
-    //   - completed: boolean (required)
-    //   - createdAt: number (required, immutable)
-    //
-    // Collection: chatMemory
-    // Document ID: {userId}
-    // Fields:
-    //   - userId: string (required, immutable)
-    //   - messages: string (required, size < 100000)
-    //   - updatedAt: number (required)
-    // ===============================================================
-
-    // ===============================================================
-    // Helper Functions
+    // HELPER FUNCTIONS
     // ===============================================================
     function isAuthenticated() {
       return request.auth != null;
@@ -33,20 +14,8 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
-    function isDocOwner() {
-      return isAuthenticated() && request.auth.uid == resource.data.userId;
-    }
-
-    function uidUnchanged() {
-      return !('userId' in request.resource.data) || request.resource.data.userId == request.auth.uid;
-    }
-
     function uidNotModified() {
       return !('userId' in request.resource.data) || request.resource.data.userId == resource.data.userId;
-    }
-
-    function hasRequiredFields(fields) {
-      return request.resource.data.keys().hasAll(fields);
     }
 
     function hasOnlyAllowedFields(fields) {
@@ -54,142 +23,143 @@ service cloud.firestore {
     }
 
     // ===============================================================
-    // Domain Validators
+    // DOMAIN VALIDATORS
     // ===============================================================
+    
+    // 2. Validar campos obrigatórios e tipos
+    // 3. Limitar tamanho de strings (title máx 200 chars)
     function isValidTask(data) {
-      let hasValidFields = hasOnlyAllowedFields(['userId', 'title', 'completed', 'createdAt']) || 
-                           hasOnlyAllowedFields(['userId', 'title', 'completed', 'createdAt', 'order']) ||
-                           hasOnlyAllowedFields(['userId', 'title', 'completed', 'createdAt', 'category']) ||
-                           hasOnlyAllowedFields(['userId', 'title', 'completed', 'createdAt', 'order', 'category']);
-      
-      return hasValidFields &&
+      let isAllowedKeys = hasOnlyAllowedFields(['userId', 'title', 'completed', 'createdAt', 'order', 'category']);
+      return isAllowedKeys &&
              data.userId is string &&
-             data.title is string && data.title.size() > 0 && data.title.size() < 500 &&
+             data.title is string && data.title.size() > 0 && data.title.size() <= 200 && // Limite de 200 chars
              data.completed is bool &&
-             data.createdAt is number &&
+             (data.createdAt is number || data.createdAt is timestamp) && // Aceita Date.now() ou serverTimestamp()
              (!('order' in data) || data.order is number) &&
-             (!('category' in data) || data.category in ['Craft', 'NPC', 'Exploração', 'Igreja', 'Masmorra', 'Geral']);
-    }
-
-    function isValidChatMemory(data) {
-      return hasOnlyAllowedFields(['userId', 'messages', 'updatedAt']) &&
-             data.userId is string &&
-             data.messages is string && data.messages.size() < 100000 &&
-             data.updatedAt is number;
-    }
-
-    function isValidChatSession(data) {
-      return hasOnlyAllowedFields(['userId', 'createdAt', 'updatedAt']) &&
-             data.userId is string &&
-             data.createdAt is number &&
-             data.updatedAt is number;
-    }
-
-    function isValidChatMessage(data) {
-      return (hasOnlyAllowedFields(['role', 'content', 'createdAt']) || hasOnlyAllowedFields(['role', 'content', 'images', 'createdAt'])) &&
-             data.role is string && (data.role == 'user' || data.role == 'model') &&
-             data.content is string && data.content.size() < 20000 &&
-             data.createdAt is number &&
-             (!('images' in data) || (data.images is list && data.images.size() <= 10));
+             (!('category' in data) || data.category is string);
     }
 
     function isValidMemory(data) {
       return hasOnlyAllowedFields(['userId', 'title', 'content', 'createdAt']) &&
              data.userId is string &&
-             data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
-             data.content is string && data.content.size() > 0 && data.content.size() < 5000 &&
-             data.createdAt is number;
+             data.title is string && data.title.size() > 0 && data.title.size() <= 200 &&
+             data.content is string && data.content.size() > 0 && data.content.size() <= 5000 &&
+             (data.createdAt is number || data.createdAt is timestamp);
     }
 
-    function isValidSystemLog(data) {
-      return hasOnlyAllowedFields(['type', 'userId', 'timestamp', 'rawText', 'recoveredTasks', 'recoveredMemories']) &&
-             data.type is string &&
+    function isValidGameState(data) {
+      return data.keys().hasAll(['updatedAt']) &&
+             (data.updatedAt is number || data.updatedAt is timestamp);
+    }
+
+    function isValidErrorLog(data) {
+      return hasOnlyAllowedFields(['userId', 'message', 'stack', 'timestamp']) &&
              data.userId is string &&
-             data.timestamp is number &&
-             data.rawText is string && data.rawText.size() < 100000 &&
-             data.recoveredTasks is number &&
-             data.recoveredMemories is number;
+             data.message is string && data.message.size() <= 1000 &&
+             data.stack is string && data.stack.size() <= 5000 &&
+             (data.timestamp is timestamp);
     }
 
     // ===============================================================
-    // Rules
+    // RULES FOR SUBCOLLECTIONS (As requested: users/{userId}/*)
     // ===============================================================
     
-    match /userSettings/{userId} {
+    match /users/{userId} {
+      // 1. Garantir que userId no path bate com auth.uid
       allow read: if isOwner(userId);
-      allow create, update: if isOwner(userId) && 
-                               request.resource.data.keys().hasAll(['currentGameDay', 'updatedAt']) &&
-                               request.resource.data.keys().hasOnly(['currentGameDay', 'updatedAt']) &&
-                               request.resource.data.currentGameDay is number &&
-                               request.resource.data.updatedAt is number;
-      allow delete: if false;
+      allow write: if false; // Perfil raiz requer Cloud Function ou Admin SDK para segurança
+
+      // users/{userId}/tasks
+      match /tasks/{taskId} {
+        allow read: if isOwner(userId);
+        // Validar tipo, limite de string, e matching de owner no write
+        allow create: if isOwner(userId) && isValidTask(request.resource.data) && request.resource.data.userId == userId;
+        allow update: if isOwner(userId) && isValidTask(request.resource.data) && uidNotModified();
+        allow delete: if isOwner(userId);
+      }
+
+      // users/{userId}/memories
+      match /memories/{memoryId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidMemory(request.resource.data) && request.resource.data.userId == userId;
+        allow update: if isOwner(userId) && isValidMemory(request.resource.data) && uidNotModified();
+        allow delete: if isOwner(userId);
+      }
+
+      // users/{userId}/gameState
+      match /gameState/{stateId} {
+        allow read: if isOwner(userId);
+        allow write: if isOwner(userId) && isValidGameState(request.resource.data);
+      }
+
+      // 4. RATE LIMITING VIA CONTADOR DE ESCRITA:
+      // O Firestore local não tem "contadores temporais" nativos na mesma query. 
+      // A arquitetura para isso exige que cada 'write' num documento exija
+      // um batch update numa coleção "writeTokens/counter".
+      // Exemplo de regra para garantir que o cliente está incrementando:
+      // match /writeCounter/{counterId} {
+      //   allow update: if isOwner(userId) && 
+      //                 request.resource.data.count == resource.data.count + 1 &&
+      //                 request.time > resource.data.lastWriteTime + duration.time(0, 0, 0, 5); // delay de 5 seg
+      // }
     }
-    
-    match /systemLogs/{logId} {
-      allow create: if isAuthenticated() && 
-                       isValidSystemLog(request.resource.data) && 
-                       request.resource.data.userId == request.auth.uid;
-      // Logs are write-only for auditing
-      allow read: if false; 
-      allow update, delete: if false;
+
+    // ===============================================================
+    // FALLBACK RULES (Current App Architecture using Root Collections)
+    // Maintain these so your existing Keeper OS App.tsx and Tasks.tsx 
+    // don't break until you refactor them to point to users/{userId}/*
+    // ===============================================================
+
+    match /tasks/{taskId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && isValidTask(request.resource.data) && request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid && isValidTask(request.resource.data) && uidNotModified();
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
     }
 
     match /memories/{memoryId} {
-      allow read: if isDocOwner();
-      allow create: if isAuthenticated() && 
-                       isValidMemory(request.resource.data) && 
-                       request.resource.data.userId == request.auth.uid;
-      allow update: if isDocOwner() && 
-                       isValidMemory(request.resource.data) && 
-                       uidNotModified() &&
-                       request.resource.data.createdAt == resource.data.createdAt;
-      allow delete: if isDocOwner();
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && isValidMemory(request.resource.data) && request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid && isValidMemory(request.resource.data) && uidNotModified();
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
     }
 
-    match /tasks/{taskId} {
-      allow read: if isDocOwner();
-      allow create: if isAuthenticated() && 
-                       isValidTask(request.resource.data) && 
-                       request.resource.data.userId == request.auth.uid;
-      allow update: if isDocOwner() && 
-                       isValidTask(request.resource.data) && 
-                       uidNotModified() &&
-                       request.resource.data.createdAt == resource.data.createdAt;
-      allow delete: if isDocOwner();
-    }
-
-    match /chatMemory/{memoryId} {
-      allow read: if isOwner(memoryId);
-      allow create: if isAuthenticated() && 
-                       memoryId == request.auth.uid &&
-                       isValidChatMemory(request.resource.data) && 
-                       request.resource.data.userId == request.auth.uid;
-      allow update: if isOwner(memoryId) && 
-                       isValidChatMemory(request.resource.data) && 
-                       uidNotModified();
-      allow delete: if isOwner(memoryId);
+    match /errorLogs/{logId} {
+      allow create: if request.resource.data.userId == (isAuthenticated() ? request.auth.uid : 'anonymous') &&
+                       isValidErrorLog(request.resource.data);
+      allow read, update, delete: if false; // Write-only for security logs
     }
     
+    // Configurações do tech tree e dados do jogador (Root architecture)
+    match /userTechs/{userId} {
+      allow read: if isOwner(userId);
+      allow create, update: if isOwner(userId);
+      allow delete: if false;
+    }
+
+    match /userSettings/{userId} {
+      allow read: if isOwner(userId);
+      allow create, update: if isOwner(userId);
+      allow delete: if false;
+    }
+
+    match /systemLogs/{logId} {
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow read, update, delete: if false;
+    }
+
     match /chatSessions/{sessionId} {
       allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
-      allow create: if isAuthenticated() && 
-                       isValidChatSession(request.resource.data) && 
-                       request.resource.data.userId == request.auth.uid;
-      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid &&
-                       isValidChatSession(request.resource.data) && 
-                       uidNotModified();
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid && uidNotModified();
       allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
       
       match /messages/{messageId} {
         allow read: if isAuthenticated() && get(/databases/$(database)/documents/chatSessions/$(sessionId)).data.userId == request.auth.uid;
-        allow create: if isAuthenticated() && 
-                         get(/databases/$(database)/documents/chatSessions/$(sessionId)).data.userId == request.auth.uid &&
-                         isValidChatMessage(request.resource.data);
-        allow update: if isAuthenticated() && get(/databases/$(database)/documents/chatSessions/$(sessionId)).data.userId == request.auth.uid &&
-                         isValidChatMessage(request.resource.data) &&
-                         request.resource.data.createdAt == resource.data.createdAt;
-        allow delete: if isAuthenticated() && get(/databases/$(database)/documents/chatSessions/$(sessionId)).data.userId == request.auth.uid;
+        allow create: if isAuthenticated() && get(/databases/$(database)/documents/chatSessions/$(sessionId)).data.userId == request.auth.uid;
+        allow update, delete: if false; // Chat Messages are append only
       }
     }
+
   }
 }

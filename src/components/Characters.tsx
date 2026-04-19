@@ -16,8 +16,9 @@ export default function Characters() {
         {characters.map((char) => (
           <div 
             key={char.name} 
+            id={`char-${char.name.replace(/\s+/g, '-').toLowerCase()}`}
             onClick={() => setSelectedChar(char)}
-            className="flex items-center gap-3 p-3 bg-[rgba(0,0,0,0.5)] border-4 border-border-dark hover:border-border-gold transition-colors cursor-pointer"
+            className="flex items-center gap-3 p-3 bg-[rgba(0,0,0,0.5)] border-4 border-border-dark hover:border-border-gold transition-colors cursor-pointer scroll-mt-24"
           >
             <div className="w-16 h-16 bg-[#2c2522] border-2 border-border-dark flex-shrink-0 relative flex items-center justify-center">
               <img 

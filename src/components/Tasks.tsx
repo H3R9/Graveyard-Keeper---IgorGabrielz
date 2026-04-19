@@ -21,6 +21,7 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { SkeletonTaskCard } from './ui/Skeleton';
 
 export type TaskCategory = 'Craft' | 'NPC' | 'Exploração' | 'Igreja' | 'Masmorra' | 'Geral';
 export const CATEGORIES: TaskCategory[] = ['Craft', 'NPC', 'Exploração', 'Igreja', 'Masmorra', 'Geral'];
@@ -125,6 +126,7 @@ function SortableTaskItem({ task, toggleTask, deleteTask, isDraggable }: { task:
 export default function Tasks() {
   const { user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [loadingTasks, setLoadingTasks] = useState(true);
   const [memories, setMemories] = useState<Memory[]>([]);
   const [newTask, setNewTask] = useState('');
   const [newTaskCategory, setNewTaskCategory] = useState<TaskCategory>('Geral');
@@ -146,6 +148,7 @@ export default function Tasks() {
     if (!user) {
       setTasks([]);
       setMemories([]);
+      setLoadingTasks(false);
       return;
     }
 
@@ -163,8 +166,10 @@ export default function Tasks() {
         return b.createdAt - a.createdAt;
       });
       setTasks(tasksData);
+      setLoadingTasks(false);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'tasks');
+      setLoadingTasks(false);
     });
 
     const qMemories = query(collection(db, 'memories'), where('userId', '==', user.uid));
@@ -345,7 +350,13 @@ export default function Tasks() {
           onDragEnd={handleDragEnd}
         >
           <div className="space-y-2">
-            {tasks.length === 0 ? (
+            {loadingTasks ? (
+              <div className="grid grid-cols-1 gap-2">
+                <SkeletonTaskCard />
+                <SkeletonTaskCard />
+                <SkeletonTaskCard />
+              </div>
+            ) : tasks.length === 0 ? (
               <p className="text-center text-text-muted text-sm italic py-4 font-pixel">Nenhuma tarefa no reino.</p>
             ) : (
               <SortableContext

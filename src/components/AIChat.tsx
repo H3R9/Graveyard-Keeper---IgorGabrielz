@@ -2,10 +2,11 @@ import { useState, useRef, useEffect } from 'react';
 import { GoogleGenAI } from '@google/genai';
 import Markdown from 'react-markdown';
 import { Send, Loader2, Skull, ImagePlus, X, Trash2, History, ChevronRight, Menu } from 'lucide-react';
-import { toast } from 'sonner';
+import { useToast } from '../lib/ToastContext';
+import { SkeletonChatBubble } from './ui/Skeleton';
 import { guideText, advancedGuideText } from '../data/gameData';
 import { useAuth } from '../lib/AuthContext';
-import { doc, getDoc, setDoc, addDoc, collection, query, orderBy, onSnapshot, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, addDoc, collection, query, orderBy, onSnapshot, serverTimestamp, where } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 
 // Initialize Gemini API
@@ -63,6 +64,7 @@ const StreamingMessage = () => {
 
 export default function AIChat() {
   const { user } = useAuth();
+  const { addToast } = useToast();
   
   const initialMessage: Message = { 
     role: 'model', 
@@ -82,6 +84,19 @@ export default function AIChat() {
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [currentGameDay, setCurrentGameDay] = useState<number>(1);
+
+  useEffect(() => {
+    if (!user) return;
+    const settingsRef = doc(db, 'userSettings', user.uid);
+    const unsubscribe = onSnapshot(settingsRef, (docSnap) => {
+      if (docSnap.exists() && docSnap.data().currentGameDay) {
+        setCurrentGameDay(docSnap.data().currentGameDay);
+      }
+    });
+    return () => unsubscribe();
+  }, [user]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -107,14 +122,14 @@ export default function AIChat() {
     }
 
     // Listen to sessions
-    const sessionsQuery = query(collection(db, 'chatSessions'), orderBy('updatedAt', 'desc'));
+    const sessionsQuery = query(collection(db, 'chatSessions'), where('userId', '==', user.uid));
     const unsubscribeSessions = onSnapshot(sessionsQuery, (snapshot) => {
       const userSessions: ChatSession[] = [];
       snapshot.forEach(doc => {
-        if (doc.data().userId === user.uid) {
-          userSessions.push({ id: doc.id, ...doc.data() } as ChatSession);
-        }
+        userSessions.push({ id: doc.id, ...doc.data() } as ChatSession);
       });
+      // Sort locally to avoid requiring composite index
+      userSessions.sort((a, b) => b.updatedAt - a.updatedAt);
       setSessions(userSessions);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'chatSessions');
@@ -324,6 +339,10 @@ export default function AIChat() {
         config: {
           systemInstruction: `Você é "O Zelador", um assistente especialista no jogo Graveyard Keeper. Sua aura é sombria, sarcástica (como Gerry, a caveira), porém incrivelmente prestativa e detalhista.
 
+INFORMAÇÃO DE CONTEXTO ATUAL:
+- O dia atual no jogo (informado pelo usuário) é o Dia ${currentGameDay}.
+Os dias da semana em Graveyard keeper são 6: Pride, Lust, Gluttony, Envy, Wrath, Sloth. Para calcular o dia atual da semana considere que o Dia 1 é Pride.
+
 DIRETRIZES DE PENSAMENTO (CHAIN-OF-THOUGHT)
 Antes de dar a resposta final ao usuário, você DEVE processar a requisição internamente usando a tag <pensamento>. 
 Nesta tag, analise:
@@ -488,17 +507,11 @@ ${advancedGuideText}
 
           // Handle UI Feedback
           if (parsedAny && !hasMalformedData) {
-            toast.success('Dados extraídos e sincronizados com sucesso!', {
-              style: { borderColor: '#8b6b32', color: '#10b981' }
-            });
+            addToast('Dados extraídos e sincronizados com sucesso!', 'success');
           } else if (parsedAny && hasMalformedData) {
-            toast.warning('Anotações extraídas parcialmente (Estrutura corrompida foi recuperada).', {
-              style: { borderColor: '#f59e0b', color: '#f59e0b' }
-            });
+            addToast('Anotações extraídas parcialmente (Estrutura corrompida foi recuperada).', 'warning');
           } else if (!parsedAny && hasMalformedData) {
-            toast.error('Falha na extração. A IA gerou um formato irreconhecível.', {
-              style: { borderColor: '#ef4444', color: '#ef4444' }
-            });
+            addToast('Falha na extração. A IA gerou um formato irreconhecível.', 'error');
           }
 
           // Log parsing errors for auditing
@@ -632,14 +645,7 @@ ${advancedGuideText}
             </div>
           </div>
         ))}
-        {isLoading && (
-          <div className="flex justify-start">
-            <div className="bg-[rgba(18,14,12,0.8)] border border-[rgba(58,38,24,0.6)] p-3 rounded-sm flex items-center space-x-3">
-              <Loader2 className="animate-spin text-border-gold" size={18} />
-              <span className="text-accent-green text-sm font-pixel tracking-wide uppercase animate-pulse">Consultando os registros akáshicos...</span>
-            </div>
-          </div>
-        )}
+        {isLoading && !isStreaming && <SkeletonChatBubble />}
         {isStreaming && <StreamingMessage />}
         <div ref={messagesEndRef} />
       </div>

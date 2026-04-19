@@ -98,6 +98,65 @@ export const days = [
   { name: 'Sloth', color: 'sloth', npc: 'Astrólogo', image: '/images/dias/Sloth.png', desc: 'Dia da Preguiça. O Astrólogo observa as estrelas no Farol.' },
 ];
 
+export const alchemyRecipes = [
+  { name: 'Pó de Grafite', ingredients: 'Minério de Ferro (Moedor)', desc: 'Usado para criar tinta preta.' },
+  { name: 'Tinta Preta', ingredients: 'Pó de Grafite + Água + Frasco', desc: 'Essencial para escrever notas e livros.' },
+  { name: 'Poção de Energia', ingredients: 'Pó de Aceleração + Solução de Aceleração', desc: 'Restaura 50 de Energia.' },
+  { name: 'Poção de Saúde', ingredients: 'Pó de Vida + Solução de Vida', desc: 'Restaura 50 de Saúde.' },
+  { name: 'Suco de Zumbi', ingredients: 'Pó de Saúde + Sangue', desc: 'Usado para ressuscitar corpos como Zumbis.' },
+  { name: 'Injeção de Cola', ingredients: 'Pó de Saúde + Solução de Vida + Extrato de Caos', desc: 'Adiciona 1 Caveira Branca ao corpo.' },
+  { name: 'Injeção de Prata', ingredients: 'Pó de Ordem + Solução de Ordem + Extrato de Vida', desc: 'Remove 1 Caveira Vermelha e adiciona 1 Branca.' },
+  { name: 'Injeção de Ouro', ingredients: 'Pó de Ordem + Solução Tóxica + Extrato de Caos', desc: 'Remove 2 Caveiras Vermelhas e adiciona 2 Brancas.' },
+  { name: 'Ácido', ingredients: 'Pó Tóxico + Solução Tóxica + Extrato Tóxico', desc: 'Usado para criar injeções ácidas.' },
+  { name: 'Tempero (Spice)', ingredients: 'Pó de Saúde + Solução Tóxica + Extrato de Vida', desc: 'Usado para fazer refeições de alta qualidade.' }
+];
+
+export const cookingRecipes = [
+  { name: 'Muffins', energy: '+20', ingredients: 'Massa + Mel', desc: 'A melhor receita do início do jogo. O mel é fácil de conseguir nas árvores.' },
+  { name: 'Vinho de Qualidade (Ouro)', energy: '+40', ingredients: 'Uvas (Ouro)', desc: 'Excelente para energia e para vender na Taverna. Dá o buff "Lentidão do Vinho".' },
+  { name: 'Bolo', energy: '+95', ingredients: 'Massa + Mel + Frutas Silvestres', desc: 'A melhor comida para longas expedições na masmorra.' },
+  { name: 'Sopa de Abóbora', energy: '+35', ingredients: 'Abóbora + Leite', desc: 'Fácil de fazer quando você tem uma fazenda estabelecida.' },
+  { name: 'Cebolas Fritas', energy: '+15', ingredients: 'Cebola', desc: 'Comida de emergência. Plante muitas cebolas no início.' },
+  { name: 'Hambúrguer', energy: '+35', ingredients: 'Pão + Carne Assada + Cebola', desc: 'Bom uso para a carne que você tira dos corpos (se tiver o carimbo).' },
+];
+
+export interface TechNode {
+  id: string;
+  name: string;
+  desc: string;
+  reqs: string[];
+}
+
+export const techPriorities: { phase: string, techs: TechNode[] }[] = [
+  { 
+    phase: 'Início do Jogo (Sobrevivência)', 
+    techs: [
+      { id: 'wood', name: 'Serraria e Corte de Madeira', desc: 'Essencial para fazer tábuas e lenha.', reqs: [] },
+      { id: 'stone', name: 'Corte de Pedra', desc: 'Para consertar túmulos e construir a fornalha.', reqs: [] },
+      { id: 'furnace', name: 'Fornalha Simples', desc: 'Para derreter ferro e fazer pregos.', reqs: ['stone'] },
+      { id: 'crematory', name: 'Crematório', desc: 'A salvação para corpos ruins (caveiras vermelhas/verdes). Queime-os para obter sal e cinzas.', reqs: ['wood'] }
+    ]
+  },
+  { 
+    phase: 'Meio do Jogo (Expansão)', 
+    techs: [
+      { id: 'church2', name: 'Igreja Nível 2', desc: 'Aumenta muito a fé gerada nos sermões.', reqs: ['furnace', 'wood'] },
+      { id: 'zombies', name: 'Zumbis (Breaking Dead)', desc: 'Fale com Gunter. Automatize a coleta de madeira e pedra.', reqs: ['church2'] },
+      { id: 'study_table', name: 'Mesa de Estudo', desc: 'A principal fonte de Pontos Azuis. Estude partes de corpos e lápides.', reqs: ['church2'] },
+      { id: 'glass', name: 'Vidro e Frascos', desc: 'Necessário para alquimia e gera pontos azuis passivamente.', reqs: ['furnace'] }
+    ]
+  },
+  { 
+    phase: 'Late Game (Otimização)', 
+    techs: [
+      { id: 'embalming', name: 'Mesa de Embalsamamento', desc: 'O segredo para corpos de 16 caveiras brancas.', reqs: ['glass', 'study_table'] },
+      { id: 'writer', name: 'Escritor Fantasma', desc: 'Faça livros para gerar pontos azuis infinitos.', reqs: ['study_table'] },
+      { id: 'cultist', name: 'Cultista', desc: 'Permite ver os modificadores exatos dos órgãos (Cérebro, Coração, Intestino).', reqs: ['embalming'] },
+      { id: 'marble', name: 'Mármore', desc: 'Para criar os melhores túmulos e estátuas.', reqs: ['zombies', 'stone'] }
+    ]
+  }
+];
+
 export const characters = [
   { name: 'Gerry', role: 'Seu Guia Caveira', image: '/images/npc/Gerry.png', desc: 'Uma caveira falante com amnésia e um problema com álcool.' },
   { name: 'Burro', role: 'Entregador de Corpos', image: '/images/npc/Donkey.png', desc: 'Um burro comunista que exige cenouras pelo seu trabalho.' },
