@@ -1,31 +1,37 @@
-import { Book, BookOpen, Calendar, Users, MessageSquare, FlaskConical, ListTodo, Utensils, GitMerge, LogIn, LogOut } from 'lucide-react';
+import { Book, BookOpen, Calendar, Users, MessageSquare, FlaskConical, ListTodo, Utensils, GitMerge, LogIn, LogOut, Map, Hammer, Trophy } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAuth } from '../lib/AuthContext';
 import { useNavigation } from '../lib/NavigationContext';
 import { useToast } from '../lib/ToastContext';
 import { motion } from 'motion/react';
 import { routeImports } from '../App';
+import { useAchievements } from '../lib/AchievementContext';
 
 export default function Sidebar() {
   const { user, login, logout } = useAuth();
   const { activeTab, setActiveTab, playSound } = useNavigation();
   const { addToast } = useToast();
+  const { trackEvent } = useAchievements();
 
   const tabs = [
     { id: 'guide', label: 'Guia', icon: Book },
     { id: 'advanced', label: 'Avançado', icon: BookOpen },
+    { id: 'dailyplan', label: 'Plano', icon: Map },
     { id: 'techtree', label: 'Techs', icon: GitMerge },
+    { id: 'craftcalc', label: 'Craft', icon: Hammer },
     { id: 'calendar', label: 'Tempo', icon: Calendar },
     { id: 'characters', label: 'NPCs', icon: Users },
     { id: 'alchemy', label: 'Alquimia', icon: FlaskConical },
     { id: 'cooking', label: 'Cozinha', icon: Utensils },
     { id: 'tasks', label: 'Notas', icon: ListTodo },
     { id: 'chat', label: 'Chat', icon: MessageSquare },
+    { id: 'achievements', label: 'Conquistas', icon: Trophy },
   ];
 
   const handleTabClick = (id: string) => {
     playSound();
     setActiveTab(id);
+    trackEvent('tabVisits', id);
   };
 
   const handlePrefetch = (id: string) => {

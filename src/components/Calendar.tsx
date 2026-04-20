@@ -5,9 +5,11 @@ import { useAuth } from '../lib/AuthContext';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { Calendar as CalendarIcon, ChevronRight, AlertCircle, Sunrise } from 'lucide-react';
+import { useAchievements } from '../lib/AchievementContext';
 
 export default function Calendar() {
   const { user } = useAuth();
+  const { trackEvent } = useAchievements();
   const [currentDay, setCurrentDay] = useState<number>(1);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -43,6 +45,9 @@ export default function Calendar() {
         currentGameDay: newDay,
         updatedAt: Date.now()
       });
+      if (newDay > currentDay) {
+        trackEvent('daysAdvanced', undefined, newDay - currentDay);
+      }
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, 'userSettings');
     } finally {

@@ -1,9 +1,9 @@
 import { createContext, useContext, useState, ReactNode, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { CheckCircle2, XCircle, AlertTriangle, Info, X } from 'lucide-react';
+import { CheckCircle2, XCircle, AlertTriangle, Info, X, Trophy } from 'lucide-react';
 import { cn } from './utils';
 
-export type ToastVariant = 'success' | 'error' | 'warning' | 'info';
+export type ToastVariant = 'success' | 'error' | 'warning' | 'info' | 'achievement';
 
 export interface Toast {
   id: string;
@@ -26,7 +26,7 @@ export function useToast() {
   return context;
 }
 
-const VARIANTS = {
+const VARIANTS: Record<ToastVariant, any> = {
   success: {
     icon: CheckCircle2,
     baseClass: 'border-accent-green bg-[rgba(20,30,20,0.95)]',
@@ -54,6 +54,13 @@ const VARIANTS = {
     textClass: 'text-accent-blue',
     iconClass: 'text-accent-blue',
     shadow: 'shadow-[0_0_15px_rgba(42,75,124,0.3)]'
+  },
+  achievement: {
+    icon: Trophy,
+    baseClass: 'border-border-gold bg-[rgba(139,107,50,0.15)] backdrop-blur-lg border-2',
+    textClass: 'text-border-gold font-pixel drop-shadow-md',
+    iconClass: 'text-border-gold animate-bounce',
+    shadow: 'shadow-[0_0_30px_rgba(166,124,61,0.6)]'
   }
 };
 
@@ -69,17 +76,16 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     
     setToasts((prev) => {
       const newToasts = [...prev, { id, message, variant }];
-      // Keep only max 3 visible (the 3 most recent)
       if (newToasts.length > 3) {
         return newToasts.slice(newToasts.length - 3);
       }
       return newToasts;
     });
 
-    // Auto-dismiss after 4 seconds
+    const timeoutMs = variant === 'achievement' ? 6000 : 4000;
     setTimeout(() => {
       removeToast(id);
-    }, 4000);
+    }, timeoutMs);
   }, [removeToast]);
 
   return (
@@ -101,22 +107,27 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 animate={{ opacity: 1, x: 0, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
                 className={cn(
-                  'pointer-events-auto flex items-start p-3 w-72 sm:w-80 border backdrop-blur-md rounded-sm',
+                  'pointer-events-auto flex items-start p-3 w-72 sm:w-80 border backdrop-blur-md rounded-sm relative overflow-hidden',
                   config.baseClass,
                   config.shadow
                 )}
               >
+                {toast.variant === 'achievement' && (
+                   <div className="absolute inset-0 pointer-events-none achievement-particles opacity-30" />
+                )}
+                
                 <div className="flex-shrink-0 mt-0.5">
                   <Icon size={18} className={config.iconClass} />
                 </div>
                 <div className="ml-3 flex-1">
-                  <p className="text-sm font-sans text-text-parchment font-medium leading-snug">
+                  {toast.variant === 'achievement' && <span className="text-[10px] uppercase font-pixel tracking-widest text-border-gold mb-1 block">Conquista</span>}
+                  <p className={cn("text-sm font-sans font-medium leading-snug", toast.variant === 'achievement' ? 'text-border-gold' : 'text-text-parchment')}>
                     {toast.message}
                   </p>
                 </div>
                 <button
                   onClick={() => removeToast(toast.id)}
-                  className="ml-3 flex-shrink-0 opacity-70 hover:opacity-100 transition-opacity"
+                  className="ml-3 flex-shrink-0 opacity-70 hover:opacity-100 transition-opacity z-10"
                 >
                   <X size={16} className="text-text-muted hover:text-text-parchment" />
                 </button>

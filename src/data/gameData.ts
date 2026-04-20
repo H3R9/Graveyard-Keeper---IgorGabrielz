@@ -178,5 +178,82 @@ export const characters = [
   { name: 'Gunter', role: 'Mestre dos Zumbis', image: '/images/npc/Gunter.png', desc: 'Um zumbi acorrentado no subsolo que te ensina a reanimar mortos.' },
 ];
 
+export interface CraftingRecipe {
+  id: string;
+  name: string;
+  yield: number;
+  timeSeconds: number; // base game time to craft
+  station: string;
+  ingredients: { id: string; name: string; amount: number }[];
+}
+
+// Representação de ingredientes base e intermediários para o Graveyard Keeper
+export const craftingRecipes: Record<string, CraftingRecipe> = {
+  'flitch': {
+    id: 'flitch', name: 'Flitch', yield: 1, timeSeconds: 3, station: 'Sawhorse / Circular Saw',
+    ingredients: [ { id: 'log', name: 'Tora de Madeira (Log)', amount: 1 } ]
+  },
+  'wooden_plank': {
+    id: 'wooden_plank', name: 'Tábua de Madeira (Wooden plank)', yield: 1, timeSeconds: 4, station: 'Timber / Carpenter workbench',
+    ingredients: [ { id: 'flitch', name: 'Flitch', amount: 1 } ]
+  },
+  'iron_ingot': {
+    id: 'iron_ingot', name: 'Barra de Ferro (Iron ingot)', yield: 1, timeSeconds: 15, station: 'Furnace',
+    ingredients: [ { id: 'iron_ore', name: 'Minério de Ferro', amount: 2 }, { id: 'fuel', name: 'Combustível', amount: 2 } ]
+  },
+  'nails': {
+    id: 'nails', name: 'Pregos (Nails)', yield: 6, timeSeconds: 4, station: 'Wooden anvil / Anvil',
+    ingredients: [ { id: 'iron_ingot', name: 'Barra de Ferro (Iron ingot)', amount: 1 } ]
+  },
+  'simple_iron_parts': {
+    id: 'simple_iron_parts', name: 'Peças Simples de Ferro', yield: 3, timeSeconds: 5, station: 'Anvil',
+    ingredients: [ { id: 'iron_ingot', name: 'Barra de Ferro (Iron ingot)', amount: 1 } ]
+  },
+  'complex_iron_parts': {
+    id: 'complex_iron_parts', name: 'Peças Complexas de Ferro', yield: 1, timeSeconds: 8, station: 'Anvil',
+    ingredients: [ { id: 'iron_ingot', name: 'Barra de Ferro (Iron ingot)', amount: 1 }, { id: 'simple_iron_parts', name: 'Peças Simples de Ferro', amount: 1 } ]
+  },
+  'wooden_billet': {
+    id: 'wooden_billet', name: 'Torete de Madeira (Wooden billet)', yield: 3, timeSeconds: 2, station: 'Sawhorse / Chopping block',
+    ingredients: [ { id: 'log', name: 'Tora de Madeira (Log)', amount: 1 } ]
+  },
+  'glass_cone': {
+    id: 'glass_cone', name: 'Vidro Cônico (Conical glass)', yield: 2, timeSeconds: 20, station: 'Furnace',
+    ingredients: [ { id: 'sand', name: 'Areia de Rio', amount: 2 }, { id: 'water', name: 'Água', amount: 1 }, { id: 'fuel', name: 'Combustível', amount: 2 } ]
+  },
+  'advanced_conical_flasks': {
+    id: 'advanced_conical_flasks', name: 'Frascos Cônicos Avançados', yield: 1, timeSeconds: 10, station: 'Furnace II',
+    ingredients: [ { id: 'glass_cone', name: 'Vidro Cônico (Conical glass)', amount: 2 }, { id: 'water', name: 'Água', amount: 1 }, { id: 'fuel', name: 'Combustível', amount: 1 } ]
+  },
+  'clean_paper': {
+    id: 'clean_paper', name: 'Papel Limpo (Clean paper)', yield: 4, timeSeconds: 5, station: 'Church workbench',
+    ingredients: [ { id: 'pigskin_paper', name: 'Papel de Pele (Pigskin paper)', amount: 1 } ]
+  },
+  'pigskin_paper': {
+    id: 'pigskin_paper', name: 'Papel de Pele (Pigskin paper)', yield: 4, timeSeconds: 5, station: 'Church workbench',
+    ingredients: [ { id: 'skin', name: 'Pele Humana (Skin) ou Pele de Morcego', amount: 1 } ]
+  },
+  'pen_and_ink': {
+    id: 'pen_and_ink', name: 'Pena e Tinta (Pen and ink)', yield: 1, timeSeconds: 4, station: 'Church workbench',
+    ingredients: [ { id: 'glass_cone', name: 'Vidro Cônico (Conical glass)', amount: 1 }, { id: 'black_paint', name: 'Tinta Preta', amount: 1 }, { id: 'feather', name: 'Pena (Feather)', amount: 3 } ]
+  },
+  'black_paint': {
+    id: 'black_paint', name: 'Tinta Preta (Black paint)', yield: 1, timeSeconds: 3, station: 'Alchemy workbench',
+    ingredients: [ { id: 'graphite_powder', name: 'Pó de Grafite', amount: 1 }, { id: 'water', name: 'Água', amount: 1 } ]
+  },
+  'graphite_powder': {
+    id: 'graphite_powder', name: 'Pó de Grafite (Graphite powder)', yield: 1, timeSeconds: 3, station: 'Alchemy mill',
+    ingredients: [ { id: 'graphite', name: 'Grafite (Furnace III)', amount: 1 } ]
+  },
+  'furnace_3': {
+    id: 'furnace_3', name: 'Fornalha III (Furnace III)', yield: 1, timeSeconds: 60, station: 'Blueprint / Yard',
+    ingredients: [ { id: 'complex_iron_parts', name: 'Peças Complexas de Ferro', amount: 6 }, { id: 'stone', name: 'Pedra (Stone)', amount: 10 }, { id: 'advanced_conical_flasks', name: 'Frascos Cônicos Avançados', amount: 4 } ]
+  },
+  'zombie_farm': {
+    id: 'zombie_farm', name: 'Fazenda de Zumbis (Zombie farm)', yield: 1, timeSeconds: 120, station: 'Blueprint / Garden',
+    ingredients: [ { id: 'flitch', name: 'Flitch', amount: 10 }, { id: 'nails', name: 'Pregos (Nails)', amount: 10 }, { id: 'zombie', name: 'Zumbi (Zombie)', amount: 1 } ]
+  }
+};
+
 
 

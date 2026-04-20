@@ -11,6 +11,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { Volume2, VolumeX } from 'lucide-react';
 import { NavigationProvider } from './lib/NavigationContext';
 import { SkeletonPage } from './components/ui/Skeleton';
+import { useAchievements } from './lib/AchievementContext';
 
 // Map for prefetching
 export const routeImports = {
@@ -23,6 +24,9 @@ export const routeImports = {
   cooking: () => import('./components/Cooking'),
   tasks: () => import('./components/Tasks'),
   chat: () => import('./components/AIChat'),
+  dailyplan: () => import('./components/DailyPlan'),
+  craftcalc: () => import('./components/CraftCalculator'),
+  achievements: () => import('./components/Achievements'),
 };
 
 // Lazy loaded components
@@ -35,12 +39,16 @@ const AIChat = lazy(routeImports.chat);
 const Tasks = lazy(routeImports.tasks);
 const Cooking = lazy(routeImports.cooking);
 const TechTree = lazy(routeImports.techtree);
+const DailyPlan = lazy(routeImports.dailyplan);
+const CraftCalculator = lazy(routeImports.craftcalc);
+const Achievements = lazy(routeImports.achievements);
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('guide');
   const [isMuted, setIsMuted] = useState(true);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const { trackEvent } = useAchievements();
 
   useEffect(() => {
     // Reset scroll position when tab changes
@@ -70,6 +78,7 @@ export default function App() {
         audioRef.current.pause();
       }
       setIsMuted(!isMuted);
+      trackEvent('soundToggled');
     }
   };
 
@@ -163,6 +172,21 @@ export default function App() {
                     {activeTab === 'chat' && (
                       <ErrorBoundary fallbackTitle="Conexão Neural Rompida" fallbackMessage="O crânio murmurante perdeu subitamente a conexão com o Além-Túmulo local.">
                         <AIChat />
+                      </ErrorBoundary>
+                    )}
+                    {activeTab === 'dailyplan' && (
+                      <ErrorBoundary fallbackTitle="Profecia Despedaçada" fallbackMessage="O oráculo não conseguiu prever as teias do destino neste momento.">
+                        <DailyPlan />
+                      </ErrorBoundary>
+                    )}
+                    {activeTab === 'craftcalc' && (
+                      <ErrorBoundary fallbackTitle="Engrenagens Emperradas" fallbackMessage="A calculadora explodiu uma mola principal e parou de funcionar.">
+                        <CraftCalculator />
+                      </ErrorBoundary>
+                    )}
+                    {activeTab === 'achievements' && (
+                      <ErrorBoundary fallbackTitle="Registro Corrompido" fallbackMessage="Os selos sagrados sumiram no vácuo.">
+                        <Achievements />
                       </ErrorBoundary>
                     )}
                   </Suspense>

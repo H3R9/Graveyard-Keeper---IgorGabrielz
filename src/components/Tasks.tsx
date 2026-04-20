@@ -22,6 +22,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { SkeletonTaskCard } from './ui/Skeleton';
+import { useAchievements } from '../lib/AchievementContext';
 
 export type TaskCategory = 'Craft' | 'NPC' | 'Exploração' | 'Igreja' | 'Masmorra' | 'Geral';
 export const CATEGORIES: TaskCategory[] = ['Craft', 'NPC', 'Exploração', 'Igreja', 'Masmorra', 'Geral'];
@@ -125,6 +126,7 @@ function SortableTaskItem({ task, toggleTask, deleteTask, isDraggable }: { task:
 
 export default function Tasks() {
   const { user } = useAuth();
+  const { trackEvent } = useAchievements();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loadingTasks, setLoadingTasks] = useState(true);
   const [memories, setMemories] = useState<Memory[]>([]);
@@ -205,6 +207,7 @@ export default function Tasks() {
         category: newTaskCategory
       });
       setNewTask('');
+      trackEvent('tasksAdded');
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'tasks');
     }
@@ -216,6 +219,9 @@ export default function Tasks() {
       await updateDoc(doc(db, 'tasks', task.id), {
         completed: !task.completed,
       });
+      if (!task.completed) {
+        trackEvent('tasksCompleted');
+      }
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `tasks/${task.id}`);
     }
@@ -225,6 +231,7 @@ export default function Tasks() {
     if (!user) return;
     try {
       await deleteDoc(doc(db, 'tasks', taskId));
+      trackEvent('tasksDeleted');
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, `tasks/${taskId}`);
     }

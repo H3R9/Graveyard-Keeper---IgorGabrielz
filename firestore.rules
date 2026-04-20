@@ -86,6 +86,16 @@ service cloud.firestore {
         allow delete: if isOwner(userId);
       }
 
+      // users/{userId}/achievements (New Module)
+      match /achievements/{docId} {
+        allow read, write: if isOwner(userId);
+      }
+      
+      // users/{userId}/stats (New Module)
+      match /stats/{docId} {
+        allow read, write: if isOwner(userId);
+      }
+
       // users/{userId}/gameState
       match /gameState/{stateId} {
         allow read: if isOwner(userId);
@@ -128,6 +138,11 @@ service cloud.firestore {
       allow create: if request.resource.data.userId == (isAuthenticated() ? request.auth.uid : 'anonymous') &&
                        isValidErrorLog(request.resource.data);
       allow read, update, delete: if false; // Write-only for security logs
+    }
+    
+    match /stats/{userId} {
+      allow read: if isOwner(userId);
+      allow write: if isOwner(userId);
     }
     
     // Configurações do tech tree e dados do jogador (Root architecture)

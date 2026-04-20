@@ -39,6 +39,24 @@ h1, h2, h3, h4, h5, h6, .pixel-font {
   100% { opacity: 1; text-shadow: 0 0 2px rgba(166,124,61,0.2); }
 }
 
+/* Particles for achievement */
+.achievement-particles {
+  background-image: 
+    radial-gradient(circle at 10% 20%, rgba(255, 215, 0, 0.8) 1px, transparent 1px),
+    radial-gradient(circle at 30% 60%, rgba(255, 215, 0, 0.6) 2px, transparent 2px),
+    radial-gradient(circle at 80% 40%, rgba(255, 215, 0, 0.8) 1.5px, transparent 1.5px),
+    radial-gradient(circle at 60% 80%, rgba(255, 215, 0, 0.5) 1px, transparent 1px);
+  background-size: 100px 100px;
+  animation: fall 3s linear infinite;
+}
+
+@keyframes fall {
+  0% { transform: translateY(-50px); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { transform: translateY(100px); opacity: 0; }
+}
+
 @utility title-flicker {
   animation: textFlicker 0.05s infinite alternate;
 }

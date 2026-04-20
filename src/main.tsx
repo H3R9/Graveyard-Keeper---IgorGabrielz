@@ -5,13 +5,16 @@ import './index.css';
 import { AuthProvider } from './lib/AuthContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ToastProvider } from './lib/ToastContext';
+import { AchievementProvider } from './lib/AchievementContext';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>
       <AuthProvider>
         <ToastProvider>
-          <App />
+          <AchievementProvider>
+            <App />
+          </AchievementProvider>
         </ToastProvider>
       </AuthProvider>
     </ErrorBoundary>
